@@ -56,11 +56,7 @@ android {
 }
 
 dependencies {
-    val jlt = "2.0.12.7"
-    implementation("com.frostwire:jlibtorrent:$jlt")
-    implementation("com.frostwire:jlibtorrent-android-arm64:$jlt")
-    implementation("com.frostwire:jlibtorrent-android-arm:$jlt")
-    implementation("com.frostwire:jlibtorrent-android-x86_64:$jlt")
+    implementation("com.frostwire:jlibtorrent-android:2.1.2.1")
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material3:material3")
