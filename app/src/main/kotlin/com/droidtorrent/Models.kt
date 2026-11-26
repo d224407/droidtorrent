@@ -43,4 +43,5 @@ data class Settings(
     val limitUpEnabled: Boolean = false,
     val limitDown: Int = 100, // KB/s
     val limitUp: Int = 100, // KB/s
+    val accent: Int = 0, // ARGB seed, 0 = default colors
 )

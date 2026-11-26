@@ -1,6 +1,16 @@
 package com.droidtorrent.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row as LayoutRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -83,6 +93,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             val rows = listOf<@Composable () -> Unit>(
+                { AccentPicker(s.accent) { c -> TorrentEngine.updateSettings { it.copy(accent = c) } } },
                 { Row("Download folder", s.downloadDir) { editing = Field.Dir } },
                 {
                     Row("Simultaneous downloads",
@@ -167,4 +178,32 @@ private fun Row(title: String, value: String, trailing: @Composable (() -> Unit)
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(onClick = onClick),
     )
+}
+
+@Composable
+private fun AccentPicker(selected: Int, onPick: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text("Accent color", style = MaterialTheme.typography.bodyLarge)
+        LayoutRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()),
+        ) {
+            (listOf(0) + AccentPresets).forEach { c ->
+                val bg = if (c == 0) scheme.primaryContainer else Color(c)
+                val fg = if (c == 0) scheme.onPrimaryContainer else Color.White
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(bg)
+                        .clickable { onPick(c) },
+                ) {
+                    if (c == selected) Icon(Icons.Default.Check, "Selected", tint = fg)
+                    else if (c == 0) Icon(Icons.Default.Palette, "Default", tint = fg)
+                }
+            }
+        }
+    }
 }

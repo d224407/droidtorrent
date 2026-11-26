@@ -40,6 +40,7 @@ object TorrentEngine {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val wasComplete = HashMap<String, Boolean>()
     private val prioApplied = HashSet<String>()
+    private val sawDownload = HashSet<String>()
 
     private val _torrents = MutableStateFlow<List<TorrentItem>>(emptyList())
     val torrents: StateFlow<List<TorrentItem>> = _torrents
@@ -140,6 +141,7 @@ object TorrentEngine {
         torrentFile(hash).delete()
         wasComplete.remove(hash)
         prioApplied.remove(hash)
+        sawDownload.remove(hash)
         _torrents.value = _torrents.value.filter { it.id != id }
     }
 
@@ -266,22 +268,28 @@ object TorrentEngine {
         if (h == null) return item
 
         val st: LtStatus = h.status()
-        val complete = st.progress() >= 1f
+        val lt = st.state()
+        val hasMeta = h.torrentFile() != null
+        val complete = hasMeta && (
+            st.isFinished || st.isSeeding ||
+                lt == LtStatus.State.FINISHED || lt == LtStatus.State.SEEDING ||
+                (st.totalWanted() > 0 && st.totalWantedDone() >= st.totalWanted()))
 
         val before = wasComplete[hash]
-        if (before == false && complete) {
+        if (!complete && lt == LtStatus.State.DOWNLOADING) sawDownload.add(hash)
+        if (before == false && complete && sawDownload.remove(hash)) {
             _completed.tryEmit(st.name())
         }
         wasComplete[hash] = complete
 
         val remaining = st.totalWanted() - st.totalWantedDone()
         val ec = st.swig().errc
-        val checking = st.state() == LtStatus.State.CHECKING_FILES ||
-            st.state() == LtStatus.State.CHECKING_RESUME_DATA
+        val checking = !complete && (lt == LtStatus.State.CHECKING_FILES ||
+            lt == LtStatus.State.CHECKING_RESUME_DATA)
 
         item = item.copy(
             name = st.name().ifEmpty { hash },
-            progress = st.progress(),
+            progress = if (complete) 1f else st.progress(),
             status = when {
                 paused -> TorrentStatus.Stopped
                 checking -> TorrentStatus.Checking
@@ -333,6 +341,7 @@ object TorrentEngine {
         .put("limitUpEnabled", s.limitUpEnabled)
         .put("limitDown", s.limitDown)
         .put("limitUp", s.limitUp)
+        .put("accent", s.accent)
 
     private fun settingsFromJson(j: JSONObject, d: Settings) = Settings(
         downloadDir = j.optString("downloadDir", d.downloadDir),
@@ -342,6 +351,7 @@ object TorrentEngine {
         limitUpEnabled = j.optBoolean("limitUpEnabled", d.limitUpEnabled),
         limitDown = j.optInt("limitDown", d.limitDown),
         limitUp = j.optInt("limitUp", d.limitUp),
+        accent = j.optInt("accent", d.accent),
     )
 
     private fun loadState() {
