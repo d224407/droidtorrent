@@ -56,7 +56,7 @@ android {
 dependencies {
     implementation("com.frostwire:jlibtorrent-android:2.1.2.1")
 
-    implementation("androidx.compose.material3:material3:1.4.0")
+    implementation("androidx.compose.material3:material3:1.5.0-beta01")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.activity:activity-compose:1.14.0-alpha03")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.12.0-alpha06")
