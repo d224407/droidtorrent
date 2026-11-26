@@ -11,6 +11,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import com.droidtorrent.ui.AppTheme
 import com.droidtorrent.ui.RootScreen
 
@@ -18,11 +22,16 @@ class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
 
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { TorrentService.start(this) }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestPermissions()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                activeDownloads().collect { if (it) TorrentService.start(this@MainActivity) }
+            }
+        }
         setContent { AppTheme { RootScreen(vm) } }
         handleIntent(intent)
     }
@@ -40,8 +49,6 @@ class MainActivity : ComponentActivity() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            TorrentService.start(this)
         }
     }
 

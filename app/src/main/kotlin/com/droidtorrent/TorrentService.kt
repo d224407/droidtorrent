@@ -15,10 +15,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
-/** Keeps the process alive while torrents run and shows a status notification. */
+/** Runs only while something is downloading; stops itself when the last download ends. */
 class TorrentService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -32,6 +35,9 @@ class TorrentService : Service() {
             exitProcess(0)
         }
 
+        // Repeated start commands must not stack collectors.
+        scope.coroutineContext.cancelChildren()
+
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_SERVICE, "Service", NotificationManager.IMPORTANCE_LOW))
@@ -43,10 +49,19 @@ class TorrentService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
 
         scope.launch {
+            activeDownloads().collectLatest { active ->
+                if (!active) {
+                    delay(STOP_DELAY_MS)
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            }
+        }
+        scope.launch {
             TorrentEngine.torrents.collect { list ->
                 val active = list.count { it.status == TorrentStatus.Downloading }
                 val down = list.sumOf { it.rateDown }
-                val text = if (active > 0) "$active downloading - ${formatSpeed(down)}" else "Idle"
+                val text = if (active > 0) "$active downloading - ${formatSpeed(down)}" else "Finishing..."
                 nm.notify(NOTIFICATION_ID, buildNotification(text))
             }
         }
@@ -62,7 +77,7 @@ class TorrentService : Service() {
                         .build())
             }
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -93,6 +108,7 @@ class TorrentService : Service() {
         private const val CHANNEL_DONE = "done"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_EXIT = "com.droidtorrent.EXIT"
+        private const val STOP_DELAY_MS = 3000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, TorrentService::class.java))
