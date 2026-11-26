@@ -1,0 +1,2 @@
+-keep class com.frostwire.jlibtorrent.** { *; }
+-keep class com.frostwire.jlibtorrent.swig.** { *; }
