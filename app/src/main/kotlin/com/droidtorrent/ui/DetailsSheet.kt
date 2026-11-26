@@ -9,8 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,7 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DetailsSheet(vm: MainViewModel, t: TorrentItem, onDismiss: () -> Unit) {
     val files by produceState(emptyList<TorrentFile>(), t.id) {
@@ -40,29 +43,41 @@ fun DetailsSheet(vm: MainViewModel, t: TorrentItem, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
             modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Text(t.name, style = MaterialTheme.typography.titleMedium) }
-            item { Info("Size", formatBytes(t.size)) }
-            item { Info("Downloaded", formatBytes(t.downloaded)) }
-            item { Info("Uploaded", formatBytes(t.uploaded)) }
-            item { Info("Peers", t.peers.toString()) }
-            item { Info("Location", t.location) }
-            item { Info("Pieces", "${t.pieceCount} x ${formatBytes(t.pieceSize.toLong())}") }
-            if (t.creator.isNotEmpty()) item { Info("Creator", t.creator) }
-            if (t.comment.isNotEmpty()) item { Info("Comment", t.comment) }
-            item { Info("Private", if (t.isPrivate) "Yes" else "No") }
-            item { Text("Files", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp)) }
+            item { Text(t.name, style = MaterialTheme.typography.headlineSmallEmphasized) }
+            item {
+                Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Info("Size", formatBytes(t.size))
+                        Info("Downloaded", formatBytes(t.downloaded))
+                        Info("Uploaded", formatBytes(t.uploaded))
+                        Info("Peers", t.peers.toString())
+                        Info("Location", t.location)
+                        Info("Pieces", "${t.pieceCount} x ${formatBytes(t.pieceSize.toLong())}")
+                        if (t.creator.isNotEmpty()) Info("Creator", t.creator)
+                        if (t.comment.isNotEmpty()) Info("Comment", t.comment)
+                        Info("Private", if (t.isPrivate) "Yes" else "No")
+                    }
+                }
+            }
+            item { Text("Files", style = MaterialTheme.typography.titleMediumEmphasized) }
             items(files, key = { it.index }) { f ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = f.wanted, onCheckedChange = { vm.setWanted(t.id, listOf(f.index), it) })
-                    Column(Modifier.weight(1f)) {
-                        Text(f.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        val pct = if (f.length > 0) f.completed * 100.0 / f.length else 100.0
-                        Text(
-                            "${formatBytes(f.length)} - %.0f%%".format(pct),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 16.dp)) {
+                        Checkbox(checked = f.wanted, onCheckedChange = { vm.setWanted(t.id, listOf(f.index), it) })
+                        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                            Text(f.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            val progress = if (f.length > 0) f.completed.toFloat() / f.length else 1f
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            )
+                            Text(
+                                "${formatBytes(f.length)} - %.0f%%".format(progress * 100),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }

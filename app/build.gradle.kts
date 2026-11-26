@@ -13,7 +13,7 @@ val keyProps = Properties().apply {
 
 android {
     namespace = "com.droidtorrent"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.droidtorrent.app"
@@ -58,7 +58,7 @@ android {
 dependencies {
     implementation("com.frostwire:jlibtorrent-android:2.1.2.1")
 
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation(platform("androidx.compose:compose-bom:2025.09.00"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")

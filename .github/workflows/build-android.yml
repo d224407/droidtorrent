@@ -22,10 +22,9 @@ jobs:
         run: |
           echo "$KEYSTORE" | base64 -di > android-keystore.jks
           echo "$PROPS" | base64 -di > key.properties
-      - run: gradle assembleRelease bundleRelease
+      - run: gradle assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: droidtorrent-android
           path: |
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
