@@ -102,7 +102,7 @@ object TorrentEngine {
     fun add(link: String): AddResult = synchronized(lock) {
         val manager = sm ?: error("Engine not started")
         if (!link.startsWith("magnet:")) error("Unsupported link")
-        val hash = AddTorrentParams.parseMagnetUri(link).infoHash().toString()
+        val hash = AddTorrentParams.parseMagnetUri(link).infoHashes.v1.toString()
         if (find(hash) != null) return AddResult.Duplicate
         val save = saveDir()
         manager.download(link, save, torrent_flags_t())
@@ -113,7 +113,7 @@ object TorrentEngine {
     fun add(bytes: ByteArray): AddResult = synchronized(lock) {
         val manager = sm ?: error("Engine not started")
         val ti = TorrentInfo.bdecode(bytes)
-        val hash = ti.infoHash().toString()
+        val hash = ti.infoHashV1().toString()
         if (find(hash) != null) return AddResult.Duplicate
         val save = saveDir()
         torrentFile(hash).writeBytes(ti.bencode())
@@ -149,14 +149,14 @@ object TorrentEngine {
         val ti = h.torrentFile() ?: return emptyList()
         val fs = ti.files()
         val prios = h.filePriorities()
-        val progress = h.fileProgress(TorrentHandle.FileProgressFlags.PIECE_GRANULARITY)
+        val progress = h.fileProgress(TorrentHandle.PIECE_GRANULARITY)
         List(fs.numFiles()) { i ->
             TorrentFile(
                 index = i,
                 name = fs.filePath(i),
                 length = fs.fileSize(i),
                 completed = progress.getOrElse(i) { 0L },
-                wanted = prios.getOrElse(i) { Priority.DEFAULT } != Priority.IGNORE,
+                wanted = prios.getOrElse(i) { Priority.NORMAL } != Priority.IGNORE,
             )
         }
     }
@@ -165,8 +165,8 @@ object TorrentEngine {
         val h = find(hash) ?: return@withHash
         val ti = h.torrentFile() ?: return@withHash
         val current = h.filePriorities()
-        val next = Array(ti.numFiles()) { current.getOrElse(it) { Priority.DEFAULT } }
-        for (i in indices) if (i in next.indices) next[i] = if (wanted) Priority.DEFAULT else Priority.IGNORE
+        val next = Array(ti.numFiles()) { current.getOrElse(it) { Priority.NORMAL } }
+        for (i in indices) if (i in next.indices) next[i] = if (wanted) Priority.NORMAL else Priority.IGNORE
         h.prioritizeFiles(next)
         m.put("prios", JSONArray().also { a -> next.forEach { a.put(it.swig()) } })
     }
@@ -277,8 +277,7 @@ object TorrentEngine {
         val remaining = st.totalWanted() - st.totalWantedDone()
         val ec = st.swig().errc
         val checking = st.state() == LtStatus.State.CHECKING_FILES ||
-            st.state() == LtStatus.State.CHECKING_RESUME_DATA ||
-            st.state() == LtStatus.State.ALLOCATING
+            st.state() == LtStatus.State.CHECKING_RESUME_DATA
 
         item = item.copy(
             name = st.name().ifEmpty { hash },
@@ -294,7 +293,7 @@ object TorrentEngine {
             downloaded = st.allTimeDownload(),
             uploaded = st.allTimeUpload(),
             peers = st.numPeers(),
-            location = st.savePath(),
+            location = h.savePath(),
             etaSeconds = if (st.downloadRate() > 0 && !complete) remaining / st.downloadRate() else -1,
             error = if (ec.value() != 0) ec.message() else "",
             magnet = h.makeMagnetUri(),
